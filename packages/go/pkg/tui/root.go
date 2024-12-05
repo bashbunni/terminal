@@ -13,8 +13,10 @@ import (
 	"github.com/terminaldotshop/terminal/go/pkg/tui/theme"
 )
 
-type page = int
-type size = int
+type (
+	page = int
+	size = int
+)
 
 const (
 	menuPage page = iota
@@ -61,6 +63,7 @@ type model struct {
 	renderer        *lipgloss.Renderer
 	theme           theme.Theme
 	fingerprint     string
+	promotion       string
 	viewportWidth   int
 	viewportHeight  int
 	widthContainer  int
@@ -92,12 +95,12 @@ type state struct {
 	menu          menuState
 }
 
-type children struct {
-}
+type children struct{}
 
 func NewModel(
 	renderer *lipgloss.Renderer,
 	fingerprint string,
+	promotion string,
 ) (tea.Model, error) {
 	api.Init()
 
@@ -108,6 +111,7 @@ func NewModel(
 		page:        splashPage,
 		renderer:    renderer,
 		fingerprint: fingerprint,
+		promotion:   promotion,
 		theme:       theme.BasicTheme(renderer, nil),
 		faqs:        LoadFaqs(),
 		accountPages: []page{
@@ -360,7 +364,6 @@ func (m model) View() string {
 				Render(child),
 		)
 	}
-
 }
 
 func (m model) getContent() string {

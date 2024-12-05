@@ -4,11 +4,10 @@ package main
 // and continually print up to date terminal information.
 
 import (
+	"context"
 	"crypto/md5"
 	_ "embed"
 	"encoding/hex"
-
-	"context"
 	"errors"
 	"log/slog"
 	"net"
@@ -26,7 +25,7 @@ import (
 	"github.com/charmbracelet/ssh"
 	"github.com/charmbracelet/wish"
 	"github.com/charmbracelet/wish/activeterm"
-	"github.com/charmbracelet/wish/bubbletea"
+	bm "github.com/charmbracelet/wish/bubbletea"
 	"github.com/charmbracelet/wish/logging"
 	gossh "golang.org/x/crypto/ssh"
 )
@@ -61,7 +60,7 @@ func main() {
 		wish.WithAddress(net.JoinHostPort("0.0.0.0", sshPort)),
 		wish.WithHostKeyPEM([]byte(resource.Resource.SSHKey.Private)),
 		wish.WithMiddleware(
-			bubbletea.Middleware(teaHandler),
+			bm.Middleware(teaHandler),
 			activeterm.Middleware(), // Bubble Tea apps usually require a PTY.
 			logging.Middleware(),
 		),
@@ -126,12 +125,16 @@ func (s *sshOutput) Fd() uintptr {
 // pass it to the new model. You can also return tea.ProgramOptions (such as
 // tea.WithAltScreen) on a session by session basis.
 func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
-	pty, _, _ := s.Pty()
+	pty, _, active := s.Pty()
+	if !active {
+		wish.Fatalln(s, "no active terminal, skipping...")
+		return nil, []tea.ProgramOption{}
+	}
 	sessionBridge := &sshOutput{
 		Session: s,
 		tty:     pty.Slave,
 	}
-	renderer := bubbletea.MakeRenderer(sessionBridge)
+	renderer := bm.MakeRenderer(sessionBridge)
 	fingerprint := uuid.New().String()
 	publicKey := s.PublicKey()
 	if publicKey != nil {
@@ -139,7 +142,15 @@ func teaHandler(s ssh.Session) (tea.Model, []tea.ProgramOption) {
 		fingerprint = hex.EncodeToString(hash[:])
 	}
 	slog.Info("got fingerprint", "fingerprint", fingerprint)
-	model, err := tui.NewModel(renderer, fingerprint)
+
+	// Check for promo codes provided as arguments.
+	cmd := s.Command()
+	promotion := ""
+	if len(cmd) == 1 {
+		promotion = cmd[0]
+	}
+
+	model, err := tui.NewModel(renderer, fingerprint, promotion)
 	if err != nil {
 		return nil, []tea.ProgramOption{}
 	}
