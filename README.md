@@ -1,3 +1,14 @@
+### Usage
+
+#### Applying promotional codes to a session
+
+```sh
+ssh -t terminal.shop -- "archbtw"
+```
+
+`-t` forces pty allocation, `--` tells ssh to forward the following commands to
+the application.
+
 ### Setup
 
 - install bun https://bun.sh/
